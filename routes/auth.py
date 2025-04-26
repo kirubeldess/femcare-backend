@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 
 router = APIRouter()
 
-
 @router.post('/signup', status_code=201)
 def signup_user(user: UserCreate,db:Session=Depends(get_db)):
     #extracting the data that's coming from the req
