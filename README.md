@@ -89,7 +89,7 @@ A backend API for the Femcare application,Built with FastAPI and PostgreSQL.
 4. Configure database URL in `database.py`
 5. Run the application:
    ```
-   uvicorn main:app --reload
+   fastapi dev main.py
    ```
 
 ## API Documentation
