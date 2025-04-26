@@ -6,11 +6,12 @@ from database import get_db
 from models.ai_consultation import AIConsultation, ConsultationStatus
 from models.user import User
 from pydantic_schemas.ai_consultation import ConsultationCreate, ConsultationResponse, ConsultationUpdate
+from utils.gemini_helper import get_health_consultation_response
 
 router = APIRouter()
 
 @router.post("/", response_model=ConsultationResponse, status_code=201)
-def create_consultation(
+async def create_consultation(
     consultation: ConsultationCreate, 
     db: Session = Depends(get_db), 
     user_id: str = None
@@ -34,10 +35,15 @@ def create_consultation(
     db.commit()
     db.refresh(db_consultation)
     
-    # In a real application, here you would:
-    # 1. Call an AI service to analyze the symptoms
-    # 2. Update the consultation with the AI response
-    # For now, we'll just return the pending consultation
+    # Call the Gemini AI service to generate a response
+    ai_response = await get_health_consultation_response(consultation.symptoms)
+    
+    # Update the consultation with the AI response
+    db_consultation.ai_response = ai_response
+    db_consultation.status = ConsultationStatus.completed
+    
+    db.commit()
+    db.refresh(db_consultation)
     
     return db_consultation
 

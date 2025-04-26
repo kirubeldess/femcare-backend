@@ -3,13 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
 # Distribution / packaging
 .Python
-build/
-develop-eggs/
 dist/
 downloads/
 eggs/
@@ -24,10 +19,8 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environment
 venv/
-env/
-ENV/
 
 # IDE files
 .idea/
@@ -35,18 +28,30 @@ ENV/
 *.swp
 *.swo
 
-# Local configuration
-.env
-.env.local
-
 # Logs
 logs/
 *.log
 
-# Database
-*.db
-*.sqlite3
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
-# OS specific
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# DO NOT ignore .env file (we want to commit this)
+# .env

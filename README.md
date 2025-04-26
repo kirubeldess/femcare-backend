@@ -1,6 +1,6 @@
 # Femcare Backend API
 
-A backend API for the Femcare application,Built with FastAPI and PostgreSQL.
+A backend API for the Femcare application, Built with FastAPI and PostgreSQL.
 
 ## Features
 
@@ -8,7 +8,7 @@ A backend API for the Femcare application,Built with FastAPI and PostgreSQL.
 - Post sharing (blogs, stories, events, biographies, anonymous venting)
 - Messaging and conversations between users
 - Communication with professional consultants
-- AI consultations for health concerns
+- AI consultations for health concerns using Google's Gemini AI
 - Educational resources repository
 - Emergency contacts database for SOS features
 - SOS functionality for emergency situations
@@ -18,6 +18,7 @@ A backend API for the Femcare application,Built with FastAPI and PostgreSQL.
 - **Framework**: FastAPI
 - **Database**: PostgreSQL
 - **Authentication**: Bcrypt for password hashing
+- **AI Integration**: Google Gemini AI for health consultations
 - **Documentation**: Swagger UI (automatic via FastAPI)
 
 ## API Endpoints
@@ -55,9 +56,10 @@ A backend API for the Femcare application,Built with FastAPI and PostgreSQL.
 - `GET /consultant-messages/consultant/{consultant_id}` - Get consultant's conversations
 
 ### AI Consultations
-- `POST /ai-consultations/` - Create a new AI consultation
+- `POST /ai-consultations/` - Create a new AI consultation with Google Gemini
 - `GET /ai-consultations/user/{user_id}` - Get a user's AI consultation history
 - `PATCH /ai-consultations/{consultation_id}` - Update consultation with AI response
+- `GET /ai-consultations/{consultation_id}` - Get a specific AI consultation
 
 ### Resources
 - `POST /resources/` - Add a new educational resource
@@ -87,10 +89,25 @@ A backend API for the Femcare application,Built with FastAPI and PostgreSQL.
    ```
 3. Set up PostgreSQL database
 4. Configure database URL in `database.py`
-5. Run the application:
+5. Set up environment variables:
+   - Create a `.env` file in the root directory
+   - Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
+6. Run the application:
    ```
    fastapi dev main.py
    ```
+
+## AI Health Consultations
+
+The application uses Google's Gemini AI to provide health consultations:
+
+1. Users can submit their symptoms through the `/ai-consultations/` endpoint
+2. The system processes the request using Google's Gemini 2.0 Flash model
+3. The AI generates a comprehensive response including:
+   - Possible causes for the symptoms
+   - General advice for managing the symptoms
+   - Guidance on when to seek professional medical care
+
 
 ## API Documentation
 
