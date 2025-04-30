@@ -119,6 +119,7 @@ http://127.0.0.1:8000/posts/user/5e2e911a-0154-4965-b878-adb825c94db4   //the id
 -create new consultation: in POST method: http://127.0.0.1:8000/ai-consultations/?user_id=0cdfa90f-d94a-4c01-bae8-f97f47e1069a
    {
      "symptoms": "I've been having headaches and fever for the past two days"
+     "consultation_type":"legal"       it could be "mental-health" or "health"  too
    }
 
 -update the consultation with AI response : in PATCH method: http://127.0.0.1:8000/ai-consultations/dbe8adb1-a5df-4dcf-a84c-888b7a2955de ->  (the posted consultation's id)

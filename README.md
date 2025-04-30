@@ -56,7 +56,8 @@ A backend API for the Femcare application, Built with FastAPI and PostgreSQL.
 - `GET /consultant-messages/consultant/{consultant_id}` - Get consultant's conversations
 
 ### AI Consultations
-- `POST /ai-consultations/` - Create a new AI consultation with Google Gemini
+- `POST /ai-consultations/{user_id}` - Create a new AI consultation
+- `GET /ai-consultations/types` - Get list of available consultation types   legal,health or mental-health
 - `GET /ai-consultations/user/{user_id}` - Get a user's AI consultation history
 - `PATCH /ai-consultations/{consultation_id}` - Update consultation with AI response
 - `GET /ai-consultations/{consultation_id}` - Get a specific AI consultation
@@ -99,15 +100,49 @@ A backend API for the Femcare application, Built with FastAPI and PostgreSQL.
 
 ## AI Health Consultations
 
-The application uses Google's Gemini AI to provide health consultations:
+The application uses Google's Gemini AI to provide specialized consultations in three areas:
 
-1. Users can submit their symptoms through the `/ai-consultations/` endpoint
-2. The system processes the request using Google's Gemini 2.0 Flash model
-3. The AI generates a comprehensive response including:
-   - Possible causes for the symptoms
-   - General advice for managing the symptoms
-   - Guidance on when to seek professional medical care
+1. **Health Consultations**
+   - Users can submit their symptoms for medical information
+   - AI provides possible causes, management strategies, and when to seek care
+   - Response includes appropriate disclaimers about medical information
 
+2. **Legal Consultations**
+   - Users can describe legal issues or questions
+   - AI provides general legal information, relevant considerations, and documentation guidance
+   - Response clarifies this is not legal advice and suggests appropriate legal professionals
+
+3. **Mental Health Consultations**
+   - Users can describe mental health concerns
+   - AI provides information, coping strategies, and professional resource guidance
+   - Response is compassionate and emphasizes the importance of professional care
+
+All consultations are processed using Google's Gemini 2.0 Flash model and include appropriate disclaimers. 
+Users can select their desired consultation type when creating a new consultation request.
+
+Example usage:
+```json
+// Health consultation
+POST /ai-consultations/
+{
+  "symptoms": "I have a headache and fever for 2 days",
+  "consultation_type": "health"
+}
+
+// Legal consultation
+POST /ai-consultations/
+{
+  "symptoms": "My landlord won't fix my heating",
+  "consultation_type": "legal"
+}
+
+// Mental health consultation
+POST /ai-consultations/
+{
+  "symptoms": "I've been feeling anxious and having trouble sleeping",
+  "consultation_type": "mental_health"
+}
+```
 
 ## API Documentation
 

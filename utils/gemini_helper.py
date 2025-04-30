@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from google import genai
 import asyncio
 from fastapi import HTTPException
+from pydantic_schemas.ai_consultation import ConsultationType
 
 # Load environment variables
 load_dotenv()
@@ -55,4 +56,113 @@ async def get_health_consultation_response(symptoms: str) -> str:
     except Exception as e:
         # Log the error (in a production environment)
         print(f"Error generating Gemini response: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate AI response: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Failed to generate AI response: {str(e)}")
+
+async def get_legal_consultation_response(issue_description: str) -> str:
+    """
+    Generate a legal consultation response using Google's Gemini AI model based on user-described legal issues.
+    
+    Args:
+        issue_description (str): The user's described legal issue.
+        
+    Returns:
+        str: The AI-generated legal consultation response.
+        
+    Raises:
+        HTTPException: If there's an error with the Gemini API request or response.
+    """
+    try:
+        # Create the prompt
+        prompt = f"""
+        Act as a legal information assistant. A user has described the following legal issue:
+        
+        {issue_description}
+        
+        Provide a helpful response that includes:
+        1. General information about this type of legal issue
+        2. Potential legal considerations that might be relevant
+        3. Suggestions for what types of documents or information might be useful to gather
+        4. Types of legal professionals who typically handle such matters
+        
+        IMPORTANT: Make it clear that this is AI-generated information, not legal advice, and not a substitute for consultation with a qualified legal professional. Do not provide specific legal advice for their situation.
+        """
+        
+        # Use the model
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model="gemini-2.0-flash", 
+            contents=prompt
+        )
+        
+        return response.text
+        
+    except Exception as e:
+        # Log the error (in a production environment)
+        print(f"Error generating legal consultation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate AI response: {str(e)}")
+
+async def get_mental_health_consultation_response(concern_description: str) -> str:
+    """
+    Generate a mental health consultation response using Google's Gemini AI model based on user-described concerns.
+    
+    Args:
+        concern_description (str): The user's described mental health concern.
+        
+    Returns:
+        str: The AI-generated mental health consultation response.
+        
+    Raises:
+        HTTPException: If there's an error with the Gemini API request or response.
+    """
+    try:
+        # Create the prompt
+        prompt = f"""
+        Act as a mental health information assistant. A user has described the following mental health concern:
+        
+        {concern_description}
+        
+        Provide a compassionate and helpful response that includes:
+        1. General information about this type of mental health concern
+        2. Evidence-based coping strategies that may be helpful
+        3. When and how to seek professional mental health support
+        4. Resources they might consider (like support groups, helplines, etc.)
+        
+        IMPORTANT: Make it clear that this is AI-generated information and not a substitute for professional mental healthcare. Be empathetic, non-judgmental, and focus on providing general information rather than specific diagnoses or treatment plans.
+        """
+        
+        # Use the model
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model="gemini-2.0-flash", 
+            contents=prompt
+        )
+        
+        return response.text
+        
+    except Exception as e:
+        # Log the error (in a production environment)
+        print(f"Error generating mental health consultation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate AI response: {str(e)}")
+
+async def get_consultation_response(consultation_type: ConsultationType, query: str) -> str:
+    """
+    Generate a consultation response based on the type of consultation requested.
+    
+    Args:
+        consultation_type (ConsultationType): The type of consultation (health, legal, mental_health)
+        query (str): The user's query or description of symptoms/issues
+        
+    Returns:
+        str: The AI-generated consultation response
+        
+    Raises:
+        HTTPException: If there's an error with the AI request or response
+    """
+    if consultation_type == ConsultationType.health:
+        return await get_health_consultation_response(query)
+    elif consultation_type == ConsultationType.legal:
+        return await get_legal_consultation_response(query)
+    elif consultation_type == ConsultationType.mental_health:
+        return await get_mental_health_consultation_response(query)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported consultation type: {consultation_type}") 

@@ -6,6 +6,11 @@ from database import engine
 
 app = FastAPI()
 
+@app.get("/")
+def root():
+    """Root endpoint for health check"""
+    return {"status": "ok", "message": "API is running"}
+
 app.include_router(auth.router, prefix='/auth')
 app.include_router(posts.router, prefix='/posts')
 app.include_router(messages.router, prefix='/messages')
