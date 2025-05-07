@@ -127,6 +127,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+/venv
 
 # Spyder project settings
 .spyderproject
@@ -183,3 +184,11 @@ Thumbs.db
 
 # DO NOT ignore .env file (we want to commit this)
 # .env
+updated_schema.pdf
+venv/Lib/site-packages/anyio/_core/__pycache__/_typedattr.cpython-312.pyc
+# Virtual environment (already included above, but adding again for clarity)
+venv/
+env/
+ENV/
+.env/
+.venv/

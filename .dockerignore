@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+
+# IDE / Editor folders
+.idea/
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Docker specific files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Other build artifacts or local config
+.env
+*.sqlite3
+*.db 

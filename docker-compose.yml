@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: femcare_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the code for development (optional, remove for production)
+      # Be careful with mounting on Windows, paths might need adjustment
+      - .:/app
+    # Environment variables can be added here if needed
+    # environment:
+    #   - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+    # command: python run.py # Optional: Override the Dockerfile CMD if needed
+
+# Add other services like databases here
+# volumes:
+#   postgres_data:
+
+# networks:
+#   femcare_network: 
