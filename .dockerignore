@@ -24,10 +24,10 @@ Thumbs.db
 logs/
 *.log
 
-# Docker specific files
-Dockerfile
-.dockerignore
-docker-compose.yml
+# Don't need to exclude these as they are needed during build
+# Dockerfile
+# .dockerignore
+# docker-compose.yml
 
 # Other build artifacts or local config
 .env

@@ -7,17 +7,46 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount the code for development (optional, remove for production)
-      # Be careful with mounting on Windows, paths might need adjustment
+      # Mount the code for development (hot-reload)
       - .:/app
-    # Environment variables can be added here if needed
-    # environment:
-    #   - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
-    # command: python run.py # Optional: Override the Dockerfile CMD if needed
+    # Restart policy
+    restart: unless-stopped
+    # Environment variables
+    environment:
+      - DATABASE_URL=postgresql://postgres:YourPassword@host.docker.internal:5432/femcare
+      # Twilio environment variables
+      - TWILIO_ACCOUNT_SID=placeholder
+      - TWILIO_AUTH_TOKEN=placeholder
+      - TWILIO_PHONE_NUMBER=+1234567890
+      # For Windows/Mac: Use host.docker.internal to access host machine services
+      # For Linux: Use 172.17.0.1 or the actual host IP
+    # Uncomment and update the depends_on section when using the db service
+    # depends_on:
+    #   - db
+    networks:
+      - femcare_network
 
-# Add other services like databases here
-# volumes:
-#   postgres_data:
+  # Uncomment this section to use a containerized PostgreSQL database
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: femcare_db
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data/
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=YourPassword
+  #     - POSTGRES_DB=femcare
+  #   ports:
+  #     - "5433:5432"  # Map to non-standard port to avoid conflicts with host PostgreSQL
+  #   networks:
+  #     - femcare_network
+  #   restart: unless-stopped
 
-# networks:
-#   femcare_network: 
+# Persistent volumes
+volumes:
+  postgres_data:
+
+# Networks
+networks:
+  femcare_network:
+    driver: bridge 

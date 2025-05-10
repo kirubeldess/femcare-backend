@@ -55,7 +55,7 @@ Before setting up the project, ensure you have the following installed:
 
 ## Running the Application
 
-You can run the application in two ways:
+You can run the application in three ways:
 
 1. **Using Python directly**:
    ```
@@ -67,7 +67,49 @@ You can run the application in two ways:
    python run.py
    ```
 
+3. **Using Docker (recommended)**:
+   ```
+   docker-compose up --build
+   ```
+
 The API will be available at http://localhost:8000
+
+## Docker Setup
+
+The application is containerized using Docker for easier deployment and consistency across environments.
+
+### Prerequisites for Docker setup
+- Docker: Install from [docker.com](https://www.docker.com/get-started)
+- Docker Compose: Usually included with Docker Desktop
+
+### Running with Docker
+
+1. **Build and start the containers**:
+   ```
+   docker-compose up --build
+   ```
+   The `--build` flag ensures that Docker rebuilds the images if any changes have been made.
+
+2. **Run in detached mode** (in the background):
+   ```
+   docker-compose up -d
+   ```
+
+3. **Stop the containers**:
+   ```
+   docker-compose down
+   ```
+
+4. **View logs**:
+   ```
+   docker-compose logs -f
+   ```
+
+### Note about database persistence
+By default, the Docker setup does not include a database service. You'll need to:
+- Use your locally installed PostgreSQL database (set up as described above)
+- Or uncomment the database service section in `docker-compose.yml` to enable a containerized database
+- Ensure you update the database connection string to point to the correct host
 
 ## API Documentation
 
@@ -128,4 +170,9 @@ Once the server is running, you can access the API documentation at:
      - macOS: `brew install postgresql`
 
 3. **Port Conflicts**:
-   - If port 8000 is already in use, modify the port in `main.py` and `run.py` 
+   - If port 8000 is already in use, modify the port in `main.py`, `run.py`, and `docker-compose.yml`
+
+4. **Docker Issues**:
+   - If you encounter "permission denied" errors when running Docker commands, make sure your user is in the docker group
+   - If containers fail to start, check Docker logs with `docker-compose logs`
+   - For Windows path issues with volumes, make sure you're using the correct path format in docker-compose.yml 

@@ -192,3 +192,4 @@ env/
 ENV/
 .env/
 .venv/
+.env.example
