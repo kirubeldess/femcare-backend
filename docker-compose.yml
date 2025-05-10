@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
     # Environment variables
     environment:
-      - DATABASE_URL=postgresql://postgres:YourPassword@host.docker.internal:5432/femcare
+      - DATABASE_URL=postgresql://postgres:12er56UI90@host.docker.internal:5432/femcare
       # Twilio environment variables
       - TWILIO_ACCOUNT_SID=placeholder
       - TWILIO_AUTH_TOKEN=placeholder

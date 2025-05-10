@@ -68,4 +68,4 @@ urllib3==1.26.15
 Werkzeug==2.3.3
 zipp==3.15.0
 google-genai
-jwt
+PyJWT==2.8.0

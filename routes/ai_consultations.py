@@ -4,13 +4,12 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from models.ai_consultation import AIConsultation, ConsultationType
+from models.ai_consultation import AIConsultation
 from models.user import User
 from pydantic_schemas.ai_consultation import (
     ConsultationCreate,
     ConsultationResponse,
     ConsultationUpdate,
-    ConsultationType as SchemaConsultationType,
 )
 from utils.auth import get_current_user
 from utils.gemini_helper import get_consultation_response
@@ -58,12 +57,12 @@ async def create_consultation(
     return db_consultation
 
 
-@router.get("/types", response_model=List[str])
-def get_consultation_types():
-    """
-    Get a list of available consultation types
-    """
-    return [t.value for t in SchemaConsultationType]
+# @router.get("/types", response_model=List[str])
+# def get_consultation_types():
+#     """
+#     Get a list of available consultation types
+#     """
+#     return [t.value for t in SchemaConsultationType]
 
 
 @router.post("/offline", response_model=ConsultationResponse, status_code=201)
@@ -166,7 +165,7 @@ def get_consultation(
 
 @router.get("/user/me", response_model=List[ConsultationResponse])
 def get_my_consultations(
-    consultation_type: Optional[SchemaConsultationType] = None,
+    # consultation_type: Optional[ConsultationType] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -176,11 +175,11 @@ def get_my_consultations(
     # Build the query
     query = db.query(AIConsultation).filter(AIConsultation.user_id == current_user.id)
 
-    # Add type filter if provided
-    if consultation_type:
-        query = query.filter(
-            AIConsultation.consultation_type == consultation_type.value
-        )
+    # # Add type filter if provided
+    # if consultation_type:
+    #     query = query.filter(
+    #         AIConsultation.consultation_type == consultation_type.value
+    #     )
 
     # Execute query with ordering
     consultations = query.order_by(AIConsultation.timestamp.desc()).all()
@@ -191,7 +190,7 @@ def get_my_consultations(
 @router.get("/user/{user_id}", response_model=List[ConsultationResponse])
 def get_user_consultations(
     user_id: str,
-    consultation_type: Optional[SchemaConsultationType] = None,
+    # consultation_type: Optional[SchemaConsultationType] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -212,11 +211,11 @@ def get_user_consultations(
     # Build the query
     query = db.query(AIConsultation).filter(AIConsultation.user_id == user_id)
 
-    # Add type filter if provided
-    if consultation_type:
-        query = query.filter(
-            AIConsultation.consultation_type == consultation_type.value
-        )
+    # # Add type filter if provided
+    # if consultation_type:
+    #     query = query.filter(
+    #         AIConsultation.consultation_type == consultation_type.value
+    #     )
 
     # Execute query with ordering
     consultations = query.order_by(AIConsultation.timestamp.desc()).all()

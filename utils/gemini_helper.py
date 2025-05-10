@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from google import genai
 import asyncio
 from fastapi import HTTPException
-from pydantic_schemas.ai_consultation import ConsultationType
+
+# from pydantic_schemas.ai_consultation import ConsultationType
 
 # Load environment variables
 load_dotenv()
@@ -178,7 +179,7 @@ async def get_mental_health_consultation_response(
 
 
 async def get_consultation_response(
-    consultation_type: ConsultationType, query: str, language: str = "en"
+    consultation_type: str, query: str, language: str = "en"
 ) -> str:
     """
     Generate a consultation response based on the type of consultation requested.
@@ -195,11 +196,11 @@ async def get_consultation_response(
     Raises:
         HTTPException: If there's an error with the AI request or response
     """
-    if consultation_type == ConsultationType.health:
+    if consultation_type == "health":
         return await get_health_consultation_response(query, language)
-    elif consultation_type == ConsultationType.legal:
+    elif consultation_type == "legal":
         return await get_legal_consultation_response(query, language)
-    elif consultation_type == ConsultationType.mental_health:
+    elif consultation_type == "mental_health":
         return await get_mental_health_consultation_response(query, language)
     else:
         raise HTTPException(
