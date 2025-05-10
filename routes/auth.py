@@ -46,9 +46,6 @@ def signup_user(user: UserCreate, db: Session = Depends(get_db)):
         password=hashed_pw,
         name=user.name,
         phone=user.phone,
-        emergency_contact=user.emergency_contact,
-        latitude=user.latitude,
-        longitude=user.longitude,
         language=user.language,
     )
 
@@ -61,34 +58,34 @@ def signup_user(user: UserCreate, db: Session = Depends(get_db)):
     return UserResponse.from_orm(user_db)
 
 
-@router.post("/login", response_model=Token)
-def login_user(user: UserLogin, db: Session = Depends(get_db)):
-    # Check if a user with the same email already exists
-    user_db = db.query(User).filter(User.email == user.email).first()
-    if not user_db:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+# @router.post("/login", response_model=Token)
+# def login_user(user: UserLogin, db: Session = Depends(get_db)):
+#     # Check if a user with the same email already exists
+#     user_db = db.query(User).filter(User.email == user.email).first()
+#     if not user_db:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect email or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
 
-    # Check if password matches
-    is_match = bcrypt.checkpw(user.password.encode(), user_db.password)
-    if not is_match:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+#     # Check if password matches
+#     is_match = bcrypt.checkpw(user.password.encode(), user_db.password)
+#     if not is_match:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect email or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
 
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user_db.id, "role": user_db.role},
-        expires_delta=access_token_expires,
-    )
+#     # Create access token
+#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+#     access_token = create_access_token(
+#         data={"sub": user_db.id, "role": user_db.role},
+#         expires_delta=access_token_expires,
+#     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+#     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/token", response_model=Token)
