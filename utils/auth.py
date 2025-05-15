@@ -90,3 +90,15 @@ def get_user_id_from_token(token: str = Depends(oauth2_scheme)) -> str:
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Check if the authenticated user has admin role
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized. Admin access required.",
+        )
+    return current_user

@@ -18,6 +18,7 @@ from pydantic_schemas.token import Token
 from utils.auth import (
     create_access_token,
     get_current_user,
+    get_admin_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 
@@ -25,6 +26,72 @@ from utils.auth import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.post(
+    "/create-initial-admin",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Authentication"],
+    summary="Create Initial Admin Account (One-Time Use)",
+)
+def create_initial_admin(user_data: UserCreate, db: Session = Depends(get_db)):
+    """
+    Create the first admin user. This endpoint is intended for one-time use during initial setup.
+    If an admin user already exists, this endpoint will return an error.
+    """
+    logger.info(
+        f"Attempting to create initial admin account with email: {user_data.email}"
+    )
+
+    # Check if any admin user already exists
+    existing_admin = db.query(User).filter(User.role == "admin").first()
+    if existing_admin:
+        logger.warning(
+            f"Attempt to use initial admin creation endpoint when an admin ({existing_admin.email}) already exists."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Initial admin account already exists. This endpoint is disabled.",
+        )
+
+    # Check if the user email itself already exists (even as non-admin)
+    existing_user_email = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User with email {user_data.email} already exists.",
+        )
+
+    hashed_password = bcrypt.hashpw(
+        user_data.password.encode("utf-8"), bcrypt.gensalt()
+    )
+
+    initial_admin_user = User(
+        id=str(uuid.uuid4()),
+        name=user_data.name,
+        email=user_data.email,
+        password=hashed_password,
+        phone=user_data.phone,
+        language=user_data.language,
+        role="admin",  # Explicitly set role to admin
+    )
+
+    try:
+        db.add(initial_admin_user)
+        db.commit()
+        db.refresh(initial_admin_user)
+        logger.info(
+            f"Initial admin user {initial_admin_user.email} created successfully."
+        )
+        return initial_admin_user
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating initial admin user {user_data.email}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create initial admin user: {str(e)}",
+        )
 
 
 @router.post("/signup", response_model=UserResponse, status_code=201)
@@ -121,15 +188,11 @@ def read_users_me(current_user: User = Depends(get_current_user)):
 
 @router.get("/users/check")
 def check_users(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)
 ):
     """
     Admin only endpoint to check all users in the system
     """
-    # Check if the current user is an admin
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     users = db.query(User).all()
     return {
         "users_count": len(users),

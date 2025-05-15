@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from models.base import Base
 from routes import (
     ai_consultations,
+    admin,
     auth,
     consultant_messages,
     consultants,
@@ -17,6 +18,10 @@ from routes import (
     resources,
     sos_logs,
     sync,  # Add the new sync route
+    reactions,  # Added reactions router
+    community_content,  # Added community_content router
+    admin_moderation,  # Added admin_moderation router
+    admin_notifications,  # Added admin_notifications router
 )
 from database import engine
 import uvicorn
@@ -61,7 +66,8 @@ async def log_requests(request: Request, call_next):
 
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(posts.router, prefix="/posts", tags=["Posts"])
+app.include_router(admin.router, tags=["Admin"])  # Admin routes with built-in prefix
+app.include_router(posts.router, prefix="/posts", tags=["Vent Posts"])
 app.include_router(messages.router, prefix="/messages", tags=["Messages"])
 app.include_router(
     ai_consultations.router, prefix="/ai-consultations", tags=["AI Consultations"]
@@ -80,6 +86,20 @@ app.include_router(sos_logs.router, prefix="/sos", tags=["SOS Logs"])
 app.include_router(
     sync.router, prefix="/sync", tags=["Offline Sync"]
 )  # Add the sync router
+app.include_router(
+    reactions.router, prefix="/reactions", tags=["Reactions"]
+)  # Added reactions router
+app.include_router(
+    community_content.router, prefix="/community-content", tags=["Community Content"]
+)  # Added community_content router
+app.include_router(
+    admin_moderation.router
+)  # Added admin_moderation router (prefix is in the router itself)
+app.include_router(
+    admin_notifications.router,
+    prefix="/admin/notifications",
+    tags=["Admin Notifications"],
+)  # Added admin_notifications router
 
 
 # Root endpoint to provide API info

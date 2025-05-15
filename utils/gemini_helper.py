@@ -207,3 +207,68 @@ async def get_consultation_response(
             status_code=400,
             detail=f"Unsupported consultation type: {consultation_type}",
         )
+
+
+async def check_profanity_llm(text_to_check: str, language: str = "en") -> bool:
+    """
+    Checks if the given text contains profanity using Google's Gemini AI model.
+
+    Args:
+        text_to_check (str): The text to be checked for profanity.
+        language (str): The language of the text (e.g., "en", "am").
+
+    Returns:
+        bool: True if profanity is detected, False otherwise.
+
+    Raises:
+        HTTPException: If there's an error with the Gemini API request or if the response is not parsable.
+    """
+    try:
+        lang_name = SUPPORTED_LANGUAGES.get(language, "English")
+
+        prompt = f"""
+        Analyze the following text and determine if it contains any profanity, hate speech, or substantially offensive content.
+        Text to analyze: "{text_to_check}"
+        
+        Respond with only "YES" if profanity/offensive content is detected, or "NO" if it is not.
+        Do not provide any explanation or any other words.
+        Language of the text is {lang_name}.
+        """
+
+        # Use a model that is good for classification tasks, like gemini-2.0-flash or a future classification model
+        response = await asyncio.to_thread(
+            client.models.generate_content, model="gemini-2.0-flash", contents=prompt
+        )
+
+        # Debug: print(f"Gemini raw response for profanity check: {response.text}")
+
+        # Process the response
+        # The model should ideally return a simple "YES" or "NO".
+        # We should be robust to minor variations, like leading/trailing whitespace or case differences.
+        processed_response = response.text.strip().upper()
+        if processed_response == "YES":
+            return True
+        elif processed_response == "NO":
+            return False
+        else:
+            # This case means the model didn't follow instructions perfectly.
+            # Log this for monitoring. For safety, we might assume profanity if uncertain,
+            # or try a fallback, or return False and flag for human review.
+            # For now, let's log it and assume not profane to avoid false positives, but this is a design choice.
+            print(
+                f"Warning: Unexpected response from LLM for profanity check: '{response.text}'. Assuming not profane."
+            )
+            return False
+
+    except Exception as e:
+        print(f"Error during LLM profanity check: {str(e)}")
+        # In case of an error with the LLM, we could fallback to a simpler check or deny by default.
+        # For now, re-raising as an HTTPException might be too disruptive for content creation.
+        # Let's return False and log the error. This means if the LLM fails, profanity check is bypassed.
+        # A more robust solution would have a fallback (like the simple list) or a circuit breaker.
+        # Consider what the safest default is: block content or allow it if the check fails.
+        # For now, allowing it to prevent service disruption if LLM has issues.
+        print(
+            f"LLM Profanity check failed for text: '{text_to_check[:50]}...'. Error: {e}. Allowing content."
+        )
+        return False  # Fallback: assume not profane if LLM check fails

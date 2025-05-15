@@ -1,46 +1,76 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models.post import Post, PostCategory
-from pydantic_schemas.post import PostCreate, PostResponse
+from models.post import Post, PostCategory as ModelPostCategory, ContentStatus
+from models.user import User
+from pydantic_schemas.post import (
+    PostCreate,
+    PostResponse,
+    PostCategory as SchemaPostCategory,
+)
+from pydantic_schemas.notification import (
+    NotificationCreate,
+    RelatedContentType as NotificationRelatedContentType,
+)
+from models.notification import Notification
+from utils.moderation import contains_profanity
+from utils.auth import get_current_user
+import logging
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
 
-@router.post("/", response_model=PostResponse, status_code=201)
-def create_post(post: PostCreate, db: Session = Depends(get_db)):
-    """
-    Create a new post using the user_id from the request body.
-    Set it to None if the post is anonymous.
-    """
-    # Convert string category to enum value
-    category_value = (
-        post.category.value if hasattr(post.category, "value") else post.category
+
+@router.post("/", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+async def create_vent_post(
+    post: PostCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new vent post. Content will be pending approval if profanity is detected."""
+    if post.category != SchemaPostCategory.vent:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for creating 'vent' posts. Use /community-content/ for other types.",
+        )
+
+    post_language = post.language if post.language else "en"
+    title_to_check = post.title if post.title else ""
+
+    # Profanity check determines initial status
+    is_profane = False
+    if await contains_profanity(
+        title_to_check, language=post_language
+    ) or await contains_profanity(post.content, language=post_language):
+        is_profane = True
+        logger.info(
+            f"Vent post by user {current_user.email if not post.is_anonymous else 'anonymous'} flagged for profanity."
+        )
+
+    current_status = (
+        ContentStatus.pending_approval if is_profane else ContentStatus.approved
     )
 
-    # Additional validation for title field
-    if category_value != "vent" and not post.title:
-        raise HTTPException(
-            status_code=400,
-            detail="Title is required for all post categories except 'vent'",
-        )
+    db_post_user_id: Optional[str] = None
+    actual_is_anonymous = post.is_anonymous if post.is_anonymous is not None else False
 
-    # Validate anonymity is only for venting
-    if category_value != "vent" and post.is_anonymous:
-        raise HTTPException(
-            status_code=400,
-            detail="Anonymous posts are only allowed for the 'vent' category",
-        )
+    if actual_is_anonymous:
+        db_post_user_id = None
+    else:
+        db_post_user_id = current_user.id
+        actual_is_anonymous = False
 
     db_post = Post(
         id=str(uuid.uuid4()),
-        user_id=None if post.is_anonymous else post.user_id,
+        user_id=db_post_user_id,
         title=post.title,
         content=post.content,
-        category=category_value,
-        is_anonymous=post.is_anonymous,
+        category=ModelPostCategory.vent,
+        is_anonymous=actual_is_anonymous,
+        status=current_status,
         location=post.location,
         language=post.language,
     )
@@ -48,76 +78,114 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
     try:
         db.add(db_post)
         db.commit()
+
+        if current_status == ContentStatus.pending_approval:
+            # Construct a meaningful message for the notification
+            title_for_message = (
+                db_post.title
+                if db_post.title and not db_post.is_anonymous
+                else "Untitled Vent Post"
+            )
+            user_info_for_message = (
+                f" by user {current_user.email}"
+                if not db_post.is_anonymous and current_user
+                else " (anonymous)"
+            )
+            if db_post.is_anonymous:
+                notification_message = f"An anonymous vent post is pending approval."
+            else:
+                notification_message = f"Vent post titled '{title_for_message}'{user_info_for_message} is pending approval."
+
+            # Ensure db_post.id is available and correct type for Notification model
+            admin_notification = Notification(
+                id=str(uuid.uuid4()),  # Notification needs its own ID
+                message=notification_message,
+                related_content_type=NotificationRelatedContentType.post.value,  # Use .value for enums going to SQLAlchemy model if it expects string
+                related_content_id=db_post.id,
+            )
+            db.add(admin_notification)
+            db.commit()  # Commit the notification
+            logger.info(
+                f"Admin notification created for pending vent post {db_post.id}"
+            )
+
         db.refresh(db_post)
-
-        # Create a dictionary from the db_post to manually convert enum values to strings
-        post_dict = {
-            "id": db_post.id,
-            "user_id": db_post.user_id,
-            "title": db_post.title,
-            "content": db_post.content,
-            "category": db_post.category.value,  # Convert enum to string value
-            "is_anonymous": db_post.is_anonymous,
-            "location": db_post.location,
-            "language": db_post.language,
-            "timestamp": db_post.timestamp,
-        }
-
-        # Return the dictionary which will be automatically converted to PostResponse
-        return post_dict
+        # response_message is not used, PostResponse is returned directly
+        return db_post
     except Exception as e:
         db.rollback()
-        print(f"Error creating post: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create post: {str(e)}")
-
-
-# Helper function to convert Post objects to dictionaries with string enum values
-def convert_post_to_dict(post):
-    return {
-        "id": post.id,
-        "user_id": post.user_id,
-        "title": post.title,
-        "content": post.content,
-        "category": post.category.value,  # Convert enum to string value
-        "is_anonymous": post.is_anonymous,
-        "location": post.location,
-        "language": post.language,
-        "timestamp": post.timestamp,
-    }
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create vent post: {str(e)}",
+        )
 
 
 @router.get("/", response_model=List[PostResponse])
-def get_posts(
+def get_vent_posts(
     skip: int = 0,
     limit: int = 100,
-    category: Optional[PostCategory] = None,
     language: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Get all posts with optional filtering by category and language"""
-    query = db.query(Post)
-
-    if category:
-        query = query.filter(Post.category == category)
+    """Get all *approved* 'vent' posts with optional filtering by language."""
+    query = db.query(Post).filter(
+        Post.category == ModelPostCategory.vent, Post.status == ContentStatus.approved
+    )
 
     if language:
         query = query.filter(Post.language == language)
 
     posts = query.order_by(Post.timestamp.desc()).offset(skip).limit(limit).all()
-    return [convert_post_to_dict(post) for post in posts]
+    return posts  # Pydantic conversion handles response structure
 
 
 @router.get("/user/{user_id}", response_model=List[PostResponse])
-def get_user_posts(user_id: str, db: Session = Depends(get_db)):
-    """Get all posts by a specific user"""
-    db_posts = db.query(Post).filter(Post.user_id == user_id).all()
-    return [convert_post_to_dict(post) for post in db_posts]
+def get_user_posts(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all posts by a specific user (includes all categories they authored and all statuses if they are viewing their own).
+    If an admin views another user's posts, they see all statuses.
+    Other users viewing someone else's posts would ideally only see approved (not implemented here yet).
+    """
+    query = db.query(Post).filter(Post.user_id == user_id)
+    # If current user is not the user_id being queried and not an admin, only show approved posts
+    if current_user.id != user_id and current_user.role != "admin":
+        query = query.filter(Post.status == ContentStatus.approved)
+
+    db_posts = query.order_by(Post.timestamp.desc()).all()
+    return db_posts
 
 
 @router.get("/{post_id}", response_model=PostResponse)
-def get_post(post_id: str, db: Session = Depends(get_db)):
-    """Get a specific post by ID"""
-    db_post = db.query(Post).filter(Post.id == post_id).first()
-    if db_post is None:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return convert_post_to_dict(db_post)
+def get_vent_post(
+    post_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """Get a specific 'vent' post by ID. Only returns if approved, or if user is author/admin."""
+    db_post = (
+        db.query(Post)
+        .filter(Post.id == post_id, Post.category == ModelPostCategory.vent)
+        .first()
+    )
+
+    if not db_post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vent post not found or not a vent type.",
+        )
+
+    # Check status for visibility
+    if db_post.status != ContentStatus.approved:
+        # Allow author or admin to see their non-approved posts
+        is_author = current_user and db_post.user_id == current_user.id
+        is_admin = current_user and current_user.role == "admin"
+        if not (is_author or is_admin):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Vent post not found or not yet approved.",
+            )
+
+    return db_post
