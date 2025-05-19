@@ -15,6 +15,7 @@ from pydantic_schemas.appointment import (
     AvailabilityCreate,
     AvailabilityResponse,
     AvailabilitySlot,
+    ConsultantAvailabilityResponse,
 )
 from utils.auth import get_current_user
 from services.email_service import email_service
@@ -114,7 +115,10 @@ async def create_availability_slot(
         )
 
 
-@router.get("/availability/consultant/{consultant_id}")
+@router.get(
+    "/availability/consultant/{consultant_id}",
+    response_model=ConsultantAvailabilityResponse,
+)
 async def get_consultant_availability(
     consultant_id: str,
     from_date: Optional[datetime] = None,
@@ -146,15 +150,32 @@ async def get_consultant_availability(
     # Order by start time
     availability_slots = query.order_by(ConsultantAvailability.start_time).all()
 
-    # Group by date using the new method
-    result = ConsultantAvailability.group_by_date(availability_slots)
+    # Format the response in the desired structure
+    result = {
+        "consultant_id": consultant_id,
+        "name": consultant.name,
+        "specialty": consultant.specialty,
+        "dates": {},
+    }
 
-    if not result:
-        result = {"consultant_id": consultant_id, "dates": {}}
+    # Group slots by date
+    for slot in availability_slots:
+        # Extract the date part from the timestamp (YYYY-MM-DD)
+        date_str = slot.start_time.strftime("%Y-%m-%d")
 
-    # Add consultant information
-    result["name"] = consultant.name
-    result["specialty"] = consultant.specialty
+        # Initialize the date array if it doesn't exist
+        if date_str not in result["dates"]:
+            result["dates"][date_str] = []
+
+        # Add the slot to the date
+        slot_obj = {
+            "id": slot.id,
+            "start_time": slot.start_time.isoformat(),
+            "end_time": slot.end_time.isoformat(),
+            "is_booked": slot.is_booked,
+        }
+
+        result["dates"][date_str].append(slot_obj)
 
     return result
 

@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
 
@@ -30,8 +30,7 @@ class AppointmentResponse(AppointmentBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AvailabilityBase(BaseModel):
@@ -50,11 +49,25 @@ class AvailabilityResponse(AvailabilityBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AvailabilitySlot(BaseModel):
     id: str
     start_time: datetime
     end_time: datetime
+
+
+# New schemas for the grouped availability format
+class SlotInfo(BaseModel):
+    id: str
+    start_time: str
+    end_time: str
+    is_booked: bool
+
+
+class ConsultantAvailabilityResponse(BaseModel):
+    consultant_id: str
+    name: Optional[str] = None
+    specialty: Optional[str] = None
+    dates: Dict[str, List[SlotInfo]]
