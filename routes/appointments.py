@@ -1,6 +1,6 @@
 import uuid
-from typing import List, Optional
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict
+from datetime import datetime, timedelta, date
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
@@ -114,10 +114,7 @@ async def create_availability_slot(
         )
 
 
-@router.get(
-    "/availability/consultant/{consultant_id}",
-    response_model=List[AvailabilityResponse],
-)
+@router.get("/availability/consultant/{consultant_id}")
 async def get_consultant_availability(
     consultant_id: str,
     from_date: Optional[datetime] = None,
@@ -125,7 +122,7 @@ async def get_consultant_availability(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all available slots for a specific consultant."""
+    """Get all available slots for a specific consultant, grouped by date."""
     # Check if the consultant exists
     consultant = db.query(Consultant).filter(Consultant.id == consultant_id).first()
     if not consultant:
@@ -149,7 +146,17 @@ async def get_consultant_availability(
     # Order by start time
     availability_slots = query.order_by(ConsultantAvailability.start_time).all()
 
-    return availability_slots
+    # Group by date using the new method
+    result = ConsultantAvailability.group_by_date(availability_slots)
+
+    if not result:
+        result = {"consultant_id": consultant_id, "dates": {}}
+
+    # Add consultant information
+    result["name"] = consultant.name
+    result["specialty"] = consultant.specialty
+
+    return result
 
 
 # APPOINTMENT MANAGEMENT

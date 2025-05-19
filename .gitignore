@@ -194,3 +194,10 @@ ENV/
 .venv/
 .env.example
 femcare-backend_profanity_admin_cch_and_notification.zip
+consultant_availability.json
+consultants.json
+create_consultant_slots.py
+create_consultants.py
+fix_database.py
+migrate_consultant_availability.py
+update_availability_model.py
