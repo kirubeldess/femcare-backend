@@ -22,10 +22,12 @@ from routes import (
     community_content,  # Added community_content router
     admin_moderation,  # Added admin_moderation router
     admin_notifications,  # Added admin_notifications router
+    appointments,  # Added appointments router
 )
 from database import engine
 import uvicorn
 from utils.auth import get_current_user
+from services.scheduler import reminder_scheduler
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -100,6 +102,9 @@ app.include_router(
     prefix="/admin/notifications",
     tags=["Admin Notifications"],
 )  # Added admin_notifications router
+app.include_router(
+    appointments.router, prefix="/appointments", tags=["Appointments"]
+)  # Added appointments router
 
 
 # Root endpoint to provide API info
@@ -132,6 +137,9 @@ async def protected_route(current_user=Depends(get_current_user)):
 
 # Create database tables
 Base.metadata.create_all(engine)
+
+# Start the appointment reminder scheduler
+reminder_scheduler.start()
 
 # Run the application with uvicorn when this file is executed
 if __name__ == "__main__":
