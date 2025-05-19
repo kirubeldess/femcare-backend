@@ -126,6 +126,7 @@ def get_vent_posts(
     limit: int = 100,
     language: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get all *approved* 'vent' posts with optional filtering by language."""
     query = db.query(Post).filter(

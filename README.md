@@ -175,4 +175,53 @@ Once the server is running, you can access the API documentation at:
 4. **Docker Issues**:
    - If you encounter "permission denied" errors when running Docker commands, make sure your user is in the docker group
    - If containers fail to start, check Docker logs with `docker-compose logs`
-   - For Windows path issues with volumes, make sure you're using the correct path format in docker-compose.yml 
+   - For Windows path issues with volumes, make sure you're using the correct path format in docker-compose.yml
+
+## Recent Feature Enhancements (as of May 2025)
+
+This section highlights significant features and updates recently integrated into the FemCare backend:
+
+### 1. Venting Platform & Moderation (VNT)
+
+*   **Anonymous Vent Posts:** Users can create anonymous text-based posts.
+*   **Enhanced Moderation Workflow:**
+    *   Vent posts and their comments now undergo a moderation process if potentially inappropriate content (profanity) is detected using an LLM.
+    *   Content status can be `pending_approval`, `approved`, or `rejected`.
+    *   Admins have dedicated endpoints (`/admin/moderation/*`) to review and approve/reject content.
+    *   Users (excluding authors/admins) can only view `approved` vent posts and comments.
+*   **Reactions:** Likes and threaded comments are supported on vent posts.
+
+### 2. Community Content & Highlights (CCH)
+
+*   **Admin-Published Content:** A separate module for admins to publish content like blogs, inspirational stories, event announcements, and biographies.
+    *   Managed via `/community-content/*` endpoints (admin-only creation).
+    *   Uses a distinct `CommunityContentPost` model, which supports an `images` field (list of image URLs) for rich content.
+    *   This content is not subject to the user-centric moderation workflow.
+
+### 3. Educational Resources (EDR)
+
+*   **Expanded Resource Types:** The `Resource` model now supports `article`, `video`, `pdf`, and `external_link` types, with fields for `file_url` and richer metadata.
+*   **Improved Search & Filtering:** Resources can be searched by keyword and filtered by type.
+*   **Bookmarking:** Users can bookmark educational resources for easy access (`/resources/bookmarks/*` and `/resources/users/me/bookmarks`).
+*   **Admin Management:** CUD (Create, Update, Delete) operations for resources are restricted to admin users.
+
+### 4. Admin User Management
+
+*   **Enhanced Admin Controls:**
+    *   Admins can create other admin users (`POST /admin/users/create-admin`).
+    *   Admins can change user roles (`PUT /admin/users/{user_id}/role`).
+*   **Initial Admin Setup:** A one-time endpoint (`POST /auth/create-initial-admin`) is available to create the first admin user if no admin exists.
+
+### 5. Admin Notification System
+
+*   **Automated Alerts:** Admins are automatically notified when new vent posts or comments are flagged and require moderation.
+*   **Notification Management:**
+    *   Admins can list all notifications, filter by read/unread status (`GET /admin/notifications/`).
+    *   Admins can mark notifications as read (`PATCH /admin/notifications/{notification_id}/read`).
+
+### 6. General Enhancements & Fixes
+
+*   **Database Schema Updates:** Added `updated_at` timestamps to `Post` and `Comment` models, and `status` to `Comment` for the moderation workflow. Note: Manual database alterations (e.g., `ALTER TABLE`) or migration tools (like Alembic) are necessary to apply these schema changes to existing databases, as `Base.metadata.create_all()` does not modify existing tables.
+*   **Pydantic V2 Compatibility:** Updated model validators (e.g., `@root_validator` to `@model_validator(mode='after')`).
+
+This summary covers the main functional areas developed and refined. For detailed API specifications, refer to the `/docs` endpoint when the application is running. 
