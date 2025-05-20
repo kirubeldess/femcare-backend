@@ -5,14 +5,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from models.ai_consultation import AIConsultation
+from models.ai_consultation_message import AIConsultationMessage
 from models.user import User
 from pydantic_schemas.ai_consultation import (
     ConsultationCreate,
     ConsultationResponse,
     ConsultationUpdate,
 )
+from pydantic_schemas.ai_consultation_message import (
+    MessageCreate,
+    MessageResponse,
+    MessageList,
+)
 from utils.auth import get_current_user
-from utils.gemini_helper import get_consultation_response
+from utils.gemini_helper import get_consultation_response, get_chat_response
 
 router = APIRouter()
 
@@ -221,3 +227,110 @@ def get_user_consultations(
     consultations = query.order_by(AIConsultation.timestamp.desc()).all()
 
     return consultations
+
+
+@router.post("/{consultation_id}/message", response_model=MessageResponse)
+async def send_message(
+    consultation_id: str,
+    message: MessageCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Send a message in an AI consultation chat and get an AI response.
+    The backend will:
+    - Save the user message
+    - Call the LLM service with chat history as context
+    - Save and return the AI's reply
+    """
+    # Check if consultation exists and user has access
+    consultation = (
+        db.query(AIConsultation).filter(AIConsultation.id == consultation_id).first()
+    )
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    # Check user permission
+    if consultation.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this consultation"
+        )
+
+    # Create and save user message
+    user_message = AIConsultationMessage(
+        id=str(uuid.uuid4()),
+        consultation_id=consultation_id,
+        sender="user",
+        content=message.message,
+    )
+
+    db.add(user_message)
+    db.commit()
+    db.refresh(user_message)
+
+    # Get chat history for context
+    chat_history = (
+        db.query(AIConsultationMessage)
+        .filter(AIConsultationMessage.consultation_id == consultation_id)
+        .order_by(AIConsultationMessage.timestamp)
+        .all()
+    )
+
+    # Format messages for the AI
+    formatted_messages = [
+        {"sender": msg.sender, "content": msg.content} for msg in chat_history
+    ]
+
+    # Get language preference (default to user's setting)
+    language = current_user.language if hasattr(current_user, "language") else "english"
+
+    # Get AI response using the LLM
+    ai_response_text = await get_chat_response(formatted_messages, language=language)
+
+    # Save AI response message
+    ai_message = AIConsultationMessage(
+        id=str(uuid.uuid4()),
+        consultation_id=consultation_id,
+        sender="ai",
+        content=ai_response_text,
+    )
+
+    db.add(ai_message)
+    db.commit()
+    db.refresh(ai_message)
+
+    return ai_message
+
+
+@router.get("/{consultation_id}/messages", response_model=List[MessageResponse])
+async def get_messages(
+    consultation_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all messages for a specific AI consultation chat.
+    Returns the messages in chronological order.
+    """
+    # Check if consultation exists and user has access
+    consultation = (
+        db.query(AIConsultation).filter(AIConsultation.id == consultation_id).first()
+    )
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    # Check user permission
+    if consultation.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this consultation"
+        )
+
+    # Get all messages for this consultation
+    messages = (
+        db.query(AIConsultationMessage)
+        .filter(AIConsultationMessage.consultation_id == consultation_id)
+        .order_by(AIConsultationMessage.timestamp)
+        .all()
+    )
+
+    return messages

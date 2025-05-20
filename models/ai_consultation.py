@@ -29,3 +29,4 @@ class AIConsultation(Base):
     status = Column(VARCHAR(20), nullable=False, default="pending")
     contains_sensitive_issue = Column(Boolean, default=False, nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    timestamp = created_at

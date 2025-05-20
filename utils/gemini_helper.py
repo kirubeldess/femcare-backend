@@ -272,3 +272,63 @@ async def check_profanity_llm(text_to_check: str, language: str = "en") -> bool:
             f"LLM Profanity check failed for text: '{text_to_check[:50]}...'. Error: {e}. Allowing content."
         )
         return False  # Fallback: assume not profane if LLM check fails
+
+
+async def get_chat_response(messages: list, language: str = "en") -> str:
+    """
+    Generate a response to a message in an ongoing AI chat conversation.
+    Takes the conversation history and generates the next AI response.
+
+    Args:
+        messages (list): List of conversation messages, each with 'sender' and 'content' fields
+        language (str): The language code ("en", "am", "or")
+
+    Returns:
+        str: The AI-generated response to the latest message
+
+    Raises:
+        HTTPException: If there's an error with the Gemini API request or response
+    """
+    try:
+        # Format the conversation history for the AI
+        lang_name = SUPPORTED_LANGUAGES.get(language, "English")
+
+        # Build the conversation history
+        conversation_history = ""
+        for message in messages:
+            role = "User" if message["sender"] == "user" else "Assistant"
+            conversation_history += f"{role}: {message['content']}\n\n"
+
+        # Create the prompt
+        prompt = f"""
+        You are a helpful health assistant for the FemCare app. You provide helpful, accurate, 
+        and empathetic information about women's health, general health, period tracking, 
+        and related topics. Here is the conversation history so far:
+        
+        {conversation_history}
+        
+        Please provide the next AI assistant response in this conversation.
+        
+        IMPORTANT GUIDELINES:
+        1. Be kind, empathetic, and professional
+        2. Focus on providing accurate health information
+        3. Make it clear when a user should consult a healthcare professional
+        4. Never provide specific medical diagnoses or treatment plans
+        5. Respect cultural sensitivities around women's health
+        
+        LANGUAGE INSTRUCTION: Please respond in {lang_name}.
+        """
+
+        # Generate the response from Gemini
+        response = await asyncio.to_thread(
+            client.models.generate_content, model="gemini-2.0-flash", contents=prompt
+        )
+
+        return response.text
+
+    except Exception as e:
+        # Log the error (in a production environment)
+        print(f"Error generating chat response: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate AI chat response: {str(e)}"
+        )

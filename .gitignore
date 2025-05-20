@@ -201,3 +201,4 @@ create_consultants.py
 fix_database.py
 migrate_consultant_availability.py
 update_availability_model.py
+AI_CHAT_INTEGRATION_README.md
