@@ -5,6 +5,12 @@ import enum
 
 
 class MessageStatus(enum.Enum):
+    # Initial message request status
+    requested = "requested"  # Initial request to start conversation
+    accepted = "accepted"  # Request accepted by vent owner
+    rejected = "rejected"  # Request rejected by vent owner
+
+    # Regular message statuses
     sent = "sent"
     delivered = "delivered"
     read = "read"

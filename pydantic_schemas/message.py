@@ -5,6 +5,12 @@ from enum import Enum
 
 
 class MessageStatus(str, Enum):
+    # Initial message request status
+    requested = "requested"
+    accepted = "accepted"
+    rejected = "rejected"
+
+    # Regular message statuses
     sent = "sent"
     delivered = "delivered"
     read = "read"
@@ -20,6 +26,11 @@ class MessageCreate(MessageBase):
 
 
 class MessageUpdate(BaseModel):
+    status: MessageStatus
+
+
+class MessageRequestResponse(BaseModel):
+    request_id: str
     status: MessageStatus
 
 
