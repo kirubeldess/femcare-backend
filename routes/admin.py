@@ -10,7 +10,7 @@ from database import get_db
 from models.user import User
 from pydantic_schemas.user_response import UserResponse
 from pydantic_schemas.user_create import UserCreate  # Added for creating admin
-from utils.auth import get_admin_user
+from utils.auth import get_current_user
 
 # Get a logger instance specific to this module
 logger = logging.getLogger(__name__)
@@ -18,8 +18,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/admin",
     tags=["Admin"],  # Changed tag to "Admin" for consistency with main.py
-    dependencies=[Depends(get_admin_user)],
 )
+
+
+# Helper function to verify admin role
+def verify_admin(user: User):
+    if user.role != "admin":
+        logger.warning(f"Non-admin user {user.id} attempted to access admin endpoint")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required for this operation",
+        )
 
 
 @router.post(
@@ -30,13 +39,16 @@ router = APIRouter(
 def create_admin_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Create a new user with admin privileges. Only accessible by other admins.
     """
+    # Verify admin privileges
+    verify_admin(current_user)
+
     logger.info(
-        f"Admin {current_admin.email} attempting to create new admin user with email: {user_data.email}"
+        f"Admin {current_user.email} attempting to create new admin user with email: {user_data.email}"
     )
 
     existing_user = db.query(User).filter(User.email == user_data.email).first()
@@ -65,13 +77,13 @@ def create_admin_user(
         db.commit()
         db.refresh(new_admin_user)
         logger.info(
-            f"Admin user {new_admin_user.email} created successfully by {current_admin.email}"
+            f"Admin user {new_admin_user.email} created successfully by {current_user.email}"
         )
         return new_admin_user
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Error creating admin user {user_data.email} by {current_admin.email}: {str(e)}"
+            f"Error creating admin user {user_data.email} by {current_user.email}: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -86,14 +98,17 @@ def update_user_role(
         ..., embed=True, pattern="^(admin|User)$"
     ),  # Allow 'admin' or 'User'
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update a user's role (e.g., promote to admin or demote to User).
     Admins cannot change their own role using this endpoint if they are the only admin.
     """
+    # Verify admin privileges
+    verify_admin(current_user)
+
     logger.info(
-        f"Admin {current_admin.email} attempting to change role of user {user_id} to {new_role}"
+        f"Admin {current_user.email} attempting to change role of user {user_id} to {new_role}"
     )
 
     user_to_update = db.query(User).filter(User.id == user_id).first()
@@ -104,7 +119,7 @@ def update_user_role(
 
     # Prevent admin from changing their own role if they are the sole admin
     if (
-        user_to_update.id == current_admin.id
+        user_to_update.id == current_user.id
         and user_to_update.role == "admin"
         and new_role != "admin"
     ):
@@ -126,13 +141,13 @@ def update_user_role(
         db.commit()
         db.refresh(user_to_update)
         logger.info(
-            f"Role of user {user_id} changed to {new_role} by {current_admin.email}"
+            f"Role of user {user_id} changed to {new_role} by {current_user.email}"
         )
         return user_to_update
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Error changing role for user {user_id} by {current_admin.email}: {str(e)}"
+            f"Error changing role for user {user_id} by {current_user.email}: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -141,20 +156,32 @@ def update_user_role(
 
 
 @router.get("/users", response_model=List[UserResponse])
-def get_all_users(db: Session = Depends(get_db)):
+def get_all_users(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
     """
     Get all users in the system
     """
+    # Verify admin privileges
+    verify_admin(current_user)
+
     logger.info("Admin requesting all users")
     users = db.query(User).all()
     return users
 
 
 @router.get("/users/{user_id}", response_model=UserResponse)
-def get_user(user_id: str, db: Session = Depends(get_db)):
+def get_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Get a specific user by ID
     """
+    # Verify admin privileges
+    verify_admin(current_user)
+
     logger.info(f"Admin requesting user with ID: {user_id}")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -166,17 +193,20 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
 def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Delete a user by ID.
     Admins cannot delete themselves.
     """
+    # Verify admin privileges
+    verify_admin(current_user)
+
     logger.info(
-        f"Admin {current_admin.email} attempting to delete user with ID: {user_id}"
+        f"Admin {current_user.email} attempting to delete user with ID: {user_id}"
     )
 
-    if user_id == current_admin.id:
+    if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admins cannot delete their own account.",
@@ -202,13 +232,13 @@ def delete_user(
         db.delete(user_to_delete)
         db.commit()
         logger.info(
-            f"User {user_id} deleted successfully by admin {current_admin.email}"
+            f"User {user_id} deleted successfully by admin {current_user.email}"
         )
         return None
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Error deleting user {user_id} by admin {current_admin.email}: {str(e)}"
+            f"Error deleting user {user_id} by admin {current_user.email}: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

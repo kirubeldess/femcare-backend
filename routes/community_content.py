@@ -1,5 +1,6 @@
 import uuid
 from typing import List, Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -15,8 +16,11 @@ from pydantic_schemas.community_content_post import (
     CCHPostResponse,
     CCHPostCategory as SchemaCCHPostCategory,
 )
-from utils.auth import get_admin_user
+from utils.auth import get_current_user
 from utils.moderation import contains_profanity
+
+# Get logger
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -25,7 +29,7 @@ router = APIRouter()
 async def create_cch_post(
     post_data: CCHPostCreate,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Create a new Community Content & Highlight post (e.g., blog, story, event, biography).
@@ -33,6 +37,16 @@ async def create_cch_post(
     The category is validated by Pydantic against CCHPostCategory enum.
     Title is required by CCHPostCreate schema.
     """
+    # Check if user is admin
+    if current_user.role != "admin":
+        logger.warning(
+            f"Non-admin user {current_user.id} attempted to create a community content post"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin users can create community content posts",
+        )
+
     # Moderation check
     post_language = post_data.language if post_data.language else "en"
     if await contains_profanity(
@@ -50,7 +64,7 @@ async def create_cch_post(
 
     db_cch_post = CommunityContentPost(
         id=str(uuid.uuid4()),
-        user_id=current_admin.id,
+        user_id=current_user.id,
         title=post_data.title,
         content=post_data.content,
         category=ModelCCHPostCategory(post_data.category.value),

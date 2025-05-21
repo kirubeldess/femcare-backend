@@ -2,6 +2,12 @@
 import logging_config  # Initialize logging
 import logging
 
+# Get logger
+logger = logging.getLogger(__name__)
+# logger.critical(
+#     "MAIN.PY: Logging is configured and this is a CRITICAL test message."
+# )  # Test log - REMOVED
+
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -29,9 +35,6 @@ from database import engine
 import uvicorn
 from utils.auth import get_current_user
 from services.scheduler import reminder_scheduler
-
-# Get logger
-logger = logging.getLogger(__name__)
 
 # Create the FastAPI app
 app = FastAPI(

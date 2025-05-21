@@ -188,11 +188,21 @@ def read_users_me(current_user: User = Depends(get_current_user)):
 
 @router.get("/users/check")
 def check_users(
-    db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Admin only endpoint to check all users in the system
     """
+    # Verify admin privileges
+    if current_user.role != "admin":
+        logger.warning(
+            f"Non-admin user {current_user.id} attempted to access admin-only endpoint"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required for this operation",
+        )
+
     users = db.query(User).all()
     return {
         "users_count": len(users),

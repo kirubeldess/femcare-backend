@@ -17,15 +17,26 @@ from models.post import (
 )
 from pydantic_schemas.post import PostResponse
 from pydantic_schemas.comment import CommentResponse
-from utils.auth import get_admin_user
+from utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/admin/moderation",
     tags=["Admin Moderation"],
-    dependencies=[Depends(get_admin_user)],
 )
+
+
+# Helper function to verify admin role
+def verify_admin(user: User):
+    if user.role != "admin":
+        logger.warning(
+            f"Non-admin user {user.id} attempted to access admin moderation endpoint"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required for this operation",
+        )
 
 
 class ContentItemResponse(BaseModel):
@@ -38,8 +49,13 @@ class ContentItemResponse(BaseModel):
 
 
 @router.get("/pending", response_model=List[ContentItemResponse])
-def get_pending_content(db: Session = Depends(get_db)):
+def get_pending_content(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
     """Get all posts and comments pending admin approval."""
+    # Verify admin privileges
+    verify_admin(current_user)
+
     pending_posts = (
         db.query(Post).filter(Post.status == ContentStatus.pending_approval).all()
     )
@@ -84,8 +100,12 @@ def approve_content(
     ),
     content_id: str = Path(..., title="The ID of the content to approve"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Approve a post or comment that is pending approval."""
+    # Verify admin privileges
+    verify_admin(current_user)
+
     item_to_approve = None
     if content_type == "post":
         item_to_approve = db.query(Post).filter(Post.id == content_id).first()
@@ -113,7 +133,9 @@ def approve_content(
     try:
         db.commit()
         db.refresh(item_to_approve)
-        logger.info(f"{content_type.capitalize()} {content_id} approved by admin.")
+        logger.info(
+            f"{content_type.capitalize()} {content_id} approved by admin {current_user.email}."
+        )
         return item_to_approve
     except Exception as e:
         db.rollback()
@@ -134,8 +156,12 @@ def reject_content(
     ),
     content_id: str = Path(..., title="The ID of the content to reject"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Reject a post or comment that is pending approval. Sets status to 'rejected'."""
+    # Verify admin privileges
+    verify_admin(current_user)
+
     item_to_reject = None
     if content_type == "post":
         item_to_reject = db.query(Post).filter(Post.id == content_id).first()
@@ -164,7 +190,9 @@ def reject_content(
     try:
         db.commit()
         db.refresh(item_to_reject)
-        logger.info(f"{content_type.capitalize()} {content_id} rejected by admin.")
+        logger.info(
+            f"{content_type.capitalize()} {content_id} rejected by admin {current_user.email}."
+        )
         return item_to_reject
     except Exception as e:
         db.rollback()
