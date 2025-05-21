@@ -12,7 +12,7 @@ from pydantic_schemas.resource import (
     ResourceCategory as SchemaResourceCategory,
     ResourceType as SchemaResourceType,
 )
-from utils.auth import get_admin_user, get_current_user
+from utils.auth import get_current_user
 from models.user import User
 from models.user_bookmarked_resource import UserBookmarkedResource
 from pydantic_schemas.user_bookmarked_resource import (
@@ -28,9 +28,16 @@ router = APIRouter()
 def create_resource(
     resource: ResourceCreate,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new educational resource. Admin access required."""
+    # Verify admin privileges
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required for this operation",
+        )
+
     db_resource = Resource(
         id=str(uuid.uuid4()),
         title=resource.title,
@@ -112,9 +119,16 @@ def update_resource(
     resource_id: str,
     resource_update: ResourceUpdate,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Update a resource's information. Admin access required."""
+    # Verify admin privileges
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required for this operation",
+        )
+
     db_resource = db.query(Resource).filter(Resource.id == resource_id).first()
     if db_resource is None:
         raise HTTPException(
@@ -149,9 +163,16 @@ def update_resource(
 def delete_resource(
     resource_id: str,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a resource. Admin access required."""
+    # Verify admin privileges
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required for this operation",
+        )
+
     db_resource = db.query(Resource).filter(Resource.id == resource_id).first()
     if db_resource is None:
         raise HTTPException(

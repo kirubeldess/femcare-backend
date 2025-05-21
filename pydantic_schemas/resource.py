@@ -69,7 +69,7 @@ class ResourceUpdate(BaseModel):
 class ResourceResponse(ResourceBase):
     id: str
     timestamp: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         orm_mode = True

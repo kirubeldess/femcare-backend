@@ -34,7 +34,7 @@ class Resource(Base):
     language = Column(VARCHAR(10), default="en")
     timestamp = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(
-        TIMESTAMP, server_default=func.now(), onupdate=func.now()
+        TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False
     )  # Added updated_at
 
     # New fields for EDR requirements

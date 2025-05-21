@@ -101,7 +101,7 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     Checks if the current user has admin privileges.
     If not, raises an HTTP 403 Forbidden exception.
     """
-    if current_user.role != "admin" or not current_user.is_active:
+    if current_user.role != "admin":
         logger.warning(
             f"Non-admin user {current_user.id} attempted to access admin-only endpoint"
         )
