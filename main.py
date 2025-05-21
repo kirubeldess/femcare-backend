@@ -23,6 +23,7 @@ from routes import (
     admin_moderation,  # Added admin_moderation router
     admin_notifications,  # Added admin_notifications router
     appointments,  # Added appointments router
+    notifications,  # Added user notifications router
 )
 from database import engine
 import uvicorn
@@ -105,6 +106,9 @@ app.include_router(
 app.include_router(
     appointments.router, prefix="/appointments", tags=["Appointments"]
 )  # Added appointments router
+app.include_router(
+    notifications.router, prefix="/notifications", tags=["Notifications"]
+)  # Added user notifications router
 
 
 # Root endpoint to provide API info
