@@ -44,7 +44,7 @@ class MessageRequestResponse(BaseModel):
 
 
 class MessageRequestUpdate(BaseModel):
-    status: MessageRequestStatus
+    status: str  # Accept string instead of enum to allow for more flexible input
 
 
 # Conversation schemas

@@ -225,19 +225,24 @@ async def respond_to_message_request(
         )
 
     # Update request status (accept or reject)
-    if response.status not in [
-        MessageRequestStatus.accepted,
-        MessageRequestStatus.rejected,
-    ]:
+    # Convert status to lowercase and check if it matches any valid status
+    # This makes the validation case-insensitive
+    status_lower = str(response.status).lower()
+
+    if status_lower == "accepted" or status_lower == "accept":
+        normalized_status = MessageRequestStatus.accepted
+    elif status_lower == "rejected" or status_lower == "reject":
+        normalized_status = MessageRequestStatus.rejected
+    else:
         raise HTTPException(
             status_code=400, detail="Status must be 'accepted' or 'rejected'"
         )
 
-    message_request.status = response.status
+    message_request.status = normalized_status
     db.commit()
 
     # If accepted, create a conversation
-    if response.status == MessageRequestStatus.accepted:
+    if normalized_status == MessageRequestStatus.accepted:
         # Create conversation
         conversation = Conversation(
             id=str(uuid.uuid4()),
