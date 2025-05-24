@@ -55,12 +55,16 @@ async def create_vent_post(
     )
 
     db_post_user_id: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
     actual_is_anonymous = post.is_anonymous if post.is_anonymous is not None else False
 
     if actual_is_anonymous:
-        db_post_user_id = None
+        db_post_user_id = current_user.id  # Store user_id even for anonymous posts
     else:
         db_post_user_id = current_user.id
+        name = current_user.name
+        email = current_user.email
         actual_is_anonymous = False
 
     db_post = Post(
@@ -70,6 +74,8 @@ async def create_vent_post(
         content=post.content,
         category=ModelPostCategory.vent,
         is_anonymous=actual_is_anonymous,
+        name=name,
+        email=email,
         status=current_status,
         location=post.location,
         language=post.language,

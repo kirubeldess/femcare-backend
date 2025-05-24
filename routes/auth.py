@@ -5,12 +5,13 @@ from datetime import timedelta
 from typing import Optional
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
+from models.consultant import Consultant
 from pydantic_schemas.user_create import UserCreate
 from pydantic_schemas.user_login import UserLogin
 from pydantic_schemas.user_response import UserResponse
@@ -95,13 +96,49 @@ def create_initial_admin(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/signup", response_model=UserResponse, status_code=201)
-def signup_user(user: UserCreate, db: Session = Depends(get_db)):
+def signup_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+    role: Optional[str] = Query(
+        None, description="Role to assign to the user (consultant or user)"
+    ),
+):
     logger.info(f"Attempting to sign up user with email: {user.email}")
 
     # Check if the user already exists in the database
     user_db = db.query(User).filter(User.email == user.email).first()
     if user_db:
         raise HTTPException(status_code=400, detail="User already exists")
+
+    # Validate role if provided
+    valid_roles = ["user", "consultant"]
+    assigned_role = "user"  # Default role
+
+    if role is not None:
+        if role not in valid_roles:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}",
+            )
+        assigned_role = role
+
+    # If role is consultant, check if this email was invited as a consultant
+    if assigned_role == "consultant":
+        consultant = db.query(Consultant).filter(Consultant.email == user.email).first()
+        if not consultant:
+            # Create a consultant record with minimal info
+            # The consultant can update their profile later
+            consultant = Consultant(
+                id=str(uuid.uuid4()),
+                name=user.name,
+                email=user.email,
+                phone=user.phone or "",
+                specialty="general",  # Default specialty
+                bio="New consultant",  # Default bio
+                available=False,  # Default to not available until profile is completed
+            )
+            db.add(consultant)
+            logger.info(f"Created new consultant record for {user.email}")
 
     # Hash the password
     hashed_pw = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
@@ -114,12 +151,15 @@ def signup_user(user: UserCreate, db: Session = Depends(get_db)):
         name=user.name,
         phone=user.phone,
         language=user.language,
+        role=assigned_role,
     )
 
     # Add the user to the database
     db.add(user_db)
     db.commit()
     db.refresh(user_db)
+
+    logger.info(f"User {user.email} created with role: {assigned_role}")
 
     # Return user data without password
     return UserResponse.from_orm(user_db)

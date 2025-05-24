@@ -65,6 +65,33 @@ class EmailService:
 
         return self._send_email(user_email, subject, body)
 
+    def send_consultant_invitation(self, email, signup_link, invited_by=None):
+        """Send an invitation email to a potential consultant."""
+        subject = "You're invited to join FemCare as a Consultant"
+
+        inviter_info = (
+            f"You have been invited by {invited_by}"
+            if invited_by
+            else "You have been invited"
+        )
+
+        body = f"""
+        <html>
+        <body>
+            <h2>Consultant Invitation</h2>
+            <p>Hello,</p>
+            <p>{inviter_info} to join FemCare as a consultant. We value your expertise and would love to have you on our team.</p>
+            <p>Please click the link below to complete your registration:</p>
+            <p><a href="{signup_link}">{signup_link}</a></p>
+            <p>This link will automatically assign you the consultant role in our system.</p>
+            <p>If you did not expect this email, you can safely ignore it.</p>
+            <p>Best regards,<br>FemCare Team</p>
+        </body>
+        </html>
+        """
+
+        return self._send_email(email, subject, body)
+
     def _send_email(self, recipient_email, subject, body):
         """Private method to handle the actual email sending."""
         try:

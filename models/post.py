@@ -32,6 +32,9 @@ class Post(Base):  # This is now specifically for Vent Posts
         Enum(PostCategory), default=PostCategory.vent, nullable=False
     )  # Default to vent
     is_anonymous = Column(Boolean, default=False)
+    # Additional user fields for non-anonymous posts
+    name = Column(VARCHAR(50), nullable=True)
+    email = Column(VARCHAR(100), nullable=True)
     location = Column(VARCHAR(100), nullable=True)
     language = Column(VARCHAR(10), default="en")
     timestamp = Column(TIMESTAMP, server_default=func.now())

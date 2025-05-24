@@ -26,6 +26,8 @@ class PostCreate(PostBase):
 class PostResponse(PostBase):
     id: str
     user_id: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
     timestamp: datetime
     updated_at: datetime
     status: ModelContentStatus
